@@ -1,36 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, query, where, getDocs } from 'firebase/firestore'
-import { db } from '../firebase'
 
 export default function Home() {
   const navigate = useNavigate()
   const [code, setCode] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
 
-  async function handleJoin(e) {
+  function handleJoin(e) {
     e.preventDefault()
-    setError('')
-    setLoading(true)
-
     const roomCode = code.trim().toUpperCase()
-
-    // Look for a live election with this room code
-    const q = query(
-      collection(db, 'elections'),
-      where('roomCode', '==', roomCode),
-      where('status', '==', 'live')
-    )
-    const snapshot = await getDocs(q)
-
-    if (snapshot.empty) {
-      setError('No active election found with that code. Check with your admin.')
-      setLoading(false)
-      return
+    if (roomCode.length === 4) {
+      navigate(`/vote/${roomCode}`)
     }
-
-    navigate(`/vote/${roomCode}`)
   }
 
   return (
@@ -52,11 +32,10 @@ export default function Home() {
         <button
           className="home-btn"
           type="submit"
-          disabled={loading || code.length < 4}
+          disabled={code.trim().length < 4}
         >
-          {loading ? 'Joining...' : 'Join'}
+          Join
         </button>
-        {error && <p className="home-error">{error}</p>}
       </form>
 
       <p className="home-admin-link">
