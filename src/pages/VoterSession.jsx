@@ -20,42 +20,61 @@ export default function VoterSession() {
   const [error, setError] = useState('')
 
   async function setupPresence(roomCode, sessionId) {
+    console.log('[VOTER] setting up presence:', `presence/${roomCode}/${sessionId}`)
     const presenceRef = ref(rtdb, `presence/${roomCode}/${sessionId}`)
     await set(presenceRef, true)
     onDisconnect(presenceRef).remove()
+    console.log('[VOTER] presence set successfully')
   }
 
   // On mount: find the election, sign in anonymously, set up presence
   useEffect(() => {
     async function init() {
       try {
+        console.log('[VOTER] init starting, roomCode:', roomCode)
+
         // Use in-memory persistence — avoids Safari iOS blocking IndexedDB
+        console.log('[VOTER] setting persistence to inMemory...')
         await setPersistence(auth, inMemoryPersistence)
+        console.log('[VOTER] signing in anonymously...')
         const credential = await signInAnonymously(auth)
         const sid = credential.user.uid
         setSessionId(sid)
+        console.log('[VOTER] signed in, sessionId:', sid)
 
         // Now authenticated, find the election by room code
+        console.log('[VOTER] querying for election with roomCode:', roomCode)
         const q = query(
           collection(db, 'elections'),
           where('roomCode', '==', roomCode),
           where('status', '==', 'live')
         )
         const snapshot = await getDocs(q)
-        if (snapshot.empty) { setError('No active election found with that code.'); return }
+        console.log('[VOTER] query returned', snapshot.docs.length, 'results')
+
+        if (snapshot.empty) {
+          console.log('[VOTER] no active election found')
+          setError('No active election found with that code.')
+          return
+        }
 
         const electionId = snapshot.docs[0].id
+        console.log('[VOTER] found election:', electionId, snapshot.docs[0].data().name)
 
         // Set up real-time presence in RTDB
         await setupPresence(roomCode, sid)
 
         // Subscribe to the election doc for real-time state changes
         onSnapshot(doc(db, 'elections', electionId), (snap) => {
-          setElection({ id: snap.id, ...snap.data() })
+          const data = snap.data()
+          console.log('[VOTER] election update — status:', data.status, 'currentPositionId:', data.currentPositionId, 'positionStatus:', data.currentPositionStatus)
+          setElection({ id: snap.id, ...data })
+        }, (err) => {
+          console.error('[VOTER] election listener error:', err.code, err.message)
         })
       } catch (err) {
+        console.error('[VOTER] init failed:', err.code, err.message, err)
         setError('Failed to join. Please try again.')
-        console.error(err)
       }
     }
 
@@ -65,6 +84,7 @@ export default function VoterSession() {
   // When the current position changes, load its candidates and check vote status
   useEffect(() => {
     if (!election?.currentPositionId) {
+      console.log('[VOTER] no current position, showing welcome/standby')
       setCurrentPosition(null)
       setCandidates([])
       setHasVoted(false)
@@ -72,9 +92,14 @@ export default function VoterSession() {
       return
     }
 
+    console.log('[VOTER] position changed to:', election.currentPositionId)
+
     // Load position doc
     onSnapshot(doc(db, 'elections', election.id, 'positions', election.currentPositionId), (snap) => {
+      console.log('[VOTER] position data:', snap.data()?.name, 'status:', snap.data()?.status)
       setCurrentPosition({ id: snap.id, ...snap.data() })
+    }, (err) => {
+      console.error('[VOTER] position listener error:', err.code, err.message)
     })
 
     // Load candidates sorted by order (ballot display order, not vote count)
@@ -83,15 +108,20 @@ export default function VoterSession() {
       orderBy('order')
     )
     onSnapshot(q, (snap) => {
+      console.log('[VOTER] loaded', snap.docs.length, 'candidates')
       setCandidates(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    }, (err) => {
+      console.error('[VOTER] candidates listener error:', err.code, err.message)
     })
 
     // Check if this device already voted on this position
     const storedVote = localStorage.getItem(`voted_${election.currentPositionId}`)
     if (storedVote) {
+      console.log('[VOTER] already voted on this position, candidateId:', storedVote)
       setHasVoted(true)
       setSelectedCandidateId(storedVote)
     } else {
+      console.log('[VOTER] has not voted on this position yet')
       setHasVoted(false)
       setSelectedCandidateId(null)
     }
@@ -99,11 +129,16 @@ export default function VoterSession() {
 
   // Submit or change a vote
   async function submitVote() {
-    if (!selectedCandidateId || !election || !currentPosition || !sessionId) return
+    console.log('[VOTER] submitting vote — candidate:', selectedCandidateId, 'position:', currentPosition?.id, 'session:', sessionId)
+    if (!selectedCandidateId || !election || !currentPosition || !sessionId) {
+      console.log('[VOTER] vote blocked — missing data:', { selectedCandidateId, election: !!election, currentPosition: !!currentPosition, sessionId })
+      return
+    }
 
     const voteRef = doc(db, 'elections', election.id, 'votes', `${currentPosition.id}_${sessionId}`)
     const newCandidateRef = doc(db, 'elections', election.id, 'positions', currentPosition.id, 'candidates', selectedCandidateId)
 
+    try {
     await runTransaction(db, async (transaction) => {
       const existingVote = await transaction.get(voteRef)
 
@@ -127,8 +162,13 @@ export default function VoterSession() {
       })
     })
 
+    })
+    console.log('[VOTER] vote submitted successfully')
     localStorage.setItem(`voted_${currentPosition.id}`, selectedCandidateId)
     setHasVoted(true)
+    } catch (err) {
+      console.error('[VOTER] vote failed:', err.code, err.message)
+    }
   }
 
   // ── Determine which screen to show ─────────────────────────────────────────
@@ -145,6 +185,7 @@ export default function VoterSession() {
   }
 
   const screen = getCurrentScreen()
+  console.log('[VOTER] screen:', screen, '| election:', election?.status, '| positionStatus:', election?.currentPositionStatus, '| hasVoted:', hasVoted)
   const winningCandidates = candidates.filter(c => currentPosition?.winnerIds?.includes(c.id))
 
   // ── Screens ─────────────────────────────────────────────────────────────────

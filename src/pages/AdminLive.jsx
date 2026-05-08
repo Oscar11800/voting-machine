@@ -18,8 +18,13 @@ export default function AdminLive() {
 
   // Load election doc
   useEffect(() => {
+    console.log('[ADMIN] listening to election:', id)
     return onSnapshot(doc(db, 'elections', id), (snapshot) => {
-      setElection({ id: snapshot.id, ...snapshot.data() })
+      const data = snapshot.data()
+      console.log('[ADMIN] election update — status:', data.status, 'roomCode:', data.roomCode, 'currentPositionId:', data.currentPositionId, 'positionStatus:', data.currentPositionStatus)
+      setElection({ id: snapshot.id, ...data })
+    }, (err) => {
+      console.error('[ADMIN] election listener error:', err.code, err.message)
     })
   }, [id])
 
@@ -27,7 +32,10 @@ export default function AdminLive() {
   useEffect(() => {
     const q = query(collection(db, 'elections', id, 'positions'), orderBy('order'))
     return onSnapshot(q, (snapshot) => {
+      console.log('[ADMIN] loaded', snapshot.docs.length, 'positions')
       setPositions(snapshot.docs.map(d => ({ id: d.id, ...d.data() })))
+    }, (err) => {
+      console.error('[ADMIN] positions listener error:', err.code, err.message)
     })
   }, [id])
 
@@ -43,17 +51,27 @@ export default function AdminLive() {
       orderBy('voteCount', 'desc')
     )
     return onSnapshot(q, (snapshot) => {
+      console.log('[ADMIN] loaded', snapshot.docs.length, 'candidates for position', election.currentPositionId)
+      snapshot.docs.forEach(d => console.log('[ADMIN]  -', d.data().name, 'votes:', d.data().voteCount))
       setCandidates(snapshot.docs.map(d => ({ id: d.id, ...d.data() })))
+    }, (err) => {
+      console.error('[ADMIN] candidates listener error:', err.code, err.message)
     })
   }, [id, election?.currentPositionId])
 
   // Listen to RTDB presence for live voter count
   useEffect(() => {
-    if (!election?.roomCode) return
+    if (!election?.roomCode) {
+      console.log('[ADMIN] no roomCode, skipping presence listener')
+      return
+    }
+    console.log('[ADMIN] listening to presence:', `presence/${election.roomCode}`)
     const presenceRef = ref(rtdb, `presence/${election.roomCode}`)
     return onValue(presenceRef, (snapshot) => {
       const data = snapshot.val()
-      setVoterCount(data ? Object.keys(data).length : 0)
+      const count = data ? Object.keys(data).length : 0
+      console.log('[ADMIN] voter count:', count, data ? Object.keys(data) : [])
+      setVoterCount(count)
     })
   }, [election?.roomCode])
 
@@ -81,6 +99,7 @@ export default function AdminLive() {
   // ── Admin actions ───────────────────────────────────────────────────────────
 
   async function openVoting(position) {
+    console.log('[ADMIN] opening voting for position:', position.id, position.name)
     await updateDoc(doc(db, 'elections', id), {
       currentPositionId: position.id,
       currentPositionStatus: 'voting',
@@ -89,23 +108,29 @@ export default function AdminLive() {
     await updateDoc(doc(db, 'elections', id, 'positions', position.id), {
       status: 'voting',
     })
+    console.log('[ADMIN] voting opened')
   }
 
   async function closeVoting() {
+    console.log('[ADMIN] closing voting for position:', currentPosition.id)
     await updateDoc(doc(db, 'elections', id), { currentPositionStatus: 'pending' })
     await updateDoc(doc(db, 'elections', id, 'positions', currentPosition.id), {
       status: 'closed',
     })
+    console.log('[ADMIN] voting closed')
   }
 
   async function reopenVoting() {
+    console.log('[ADMIN] reopening voting for position:', currentPosition.id)
     await updateDoc(doc(db, 'elections', id), { currentPositionStatus: 'voting' })
     await updateDoc(doc(db, 'elections', id, 'positions', currentPosition.id), {
       status: 'voting',
     })
+    console.log('[ADMIN] voting reopened')
   }
 
   async function releaseResults() {
+    console.log('[ADMIN] releasing results, winners:', selectedWinnerIds)
     if (selectedWinnerIds.length === 0) {
       alert('Select at least one winner before releasing results.')
       return
@@ -115,13 +140,16 @@ export default function AdminLive() {
       winnerIds: selectedWinnerIds,
     })
     await updateDoc(doc(db, 'elections', id), { currentPositionStatus: 'results_released' })
+    console.log('[ADMIN] results released')
   }
 
   async function advanceToNext() {
+    console.log('[ADMIN] advancing to next position:', nextPosition.id, nextPosition.name)
     await openVoting(nextPosition)
   }
 
   async function endElection() {
+    console.log('[ADMIN] ending election')
     await updateDoc(doc(db, 'elections', id), {
       status: 'ended',
       roomCode: null,
@@ -129,6 +157,7 @@ export default function AdminLive() {
       currentPositionStatus: null,
       lastActiveAt: serverTimestamp(),
     })
+    console.log('[ADMIN] election ended')
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
