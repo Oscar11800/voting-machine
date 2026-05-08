@@ -274,19 +274,73 @@ export default function AdminLive() {
         </div>
       )}
 
-      {/* Election ended */}
+      {/* Election ended — show full results */}
       {election.status === 'ended' && (
-        <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-          <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Election Ended</p>
-          <p className="text-muted text-sm" style={{ marginBottom: 24 }}>
-            All positions have been completed.
-          </p>
-          <button className="btn btn-primary" onClick={() => navigate('/dashboard')}>
-            Back to Dashboard
-          </button>
+        <div>
+          <div className="section-header" style={{ marginBottom: 20 }}>
+            <h2 style={{ fontSize: 22 }}>Final Results</h2>
+            <span className="badge badge-ended">Election Ended</span>
+          </div>
+          {positions.map(p => (
+            <PositionResult key={p.id} electionId={id} position={p} />
+          ))}
         </div>
       )}
     </div>
+    </div>
+  )
+}
+
+// ── Per-position results card (used on the ended results view) ───────────────
+
+function PositionResult({ electionId, position }) {
+  const [candidates, setCandidates] = useState([])
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'elections', electionId, 'positions', position.id, 'candidates'),
+      orderBy('voteCount', 'desc')
+    )
+    return onSnapshot(q, snap => {
+      setCandidates(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    })
+  }, [electionId, position.id])
+
+  const totalVotes = candidates.reduce((sum, c) => sum + c.voteCount, 0)
+  const winnerIds = position.winnerIds ?? []
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <h3 style={{ fontSize: 18, fontWeight: 700, flex: 1 }}>{position.name}</h3>
+        {winnerIds.length > 0 && (
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--brand)', background: 'var(--brand-light)', padding: '4px 10px', borderRadius: 999 }}>
+            Winner{winnerIds.length > 1 ? 's' : ''}: {candidates.filter(c => winnerIds.includes(c.id)).map(c => c.name).join(' & ')}
+          </span>
+        )}
+      </div>
+
+      {candidates.map(c => {
+        const pct = totalVotes > 0 ? Math.round((c.voteCount / totalVotes) * 100) : 0
+        const isWinner = winnerIds.includes(c.id)
+        return (
+          <div key={c.id} style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontWeight: isWinner ? 700 : 400, color: isWinner ? 'var(--brand)' : 'var(--text)' }}>
+                {isWinner ? '✓ ' : ''}{c.name}
+              </span>
+              <span className="text-muted text-sm">{c.voteCount} vote{c.voteCount !== 1 ? 's' : ''} · {pct}%</span>
+            </div>
+            <div className="tally-bar-track">
+              <div className="tally-bar-fill" style={{ width: `${pct}%`, background: isWinner ? 'var(--brand)' : '#cbd5e1' }} />
+            </div>
+          </div>
+        )
+      })}
+
+      {totalVotes === 0 && (
+        <p className="text-muted text-sm">No votes recorded.</p>
+      )}
     </div>
   )
 }

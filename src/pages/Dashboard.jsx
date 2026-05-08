@@ -134,6 +134,22 @@ export default function Dashboard() {
             election={election}
             onEdit={() => navigate(`/election/${election.id}`)}
             onResume={() => navigate(`/live/${election.id}`)}
+            onStart={async () => {
+              const posSnap = await getDocs(collection(db, 'elections', election.id, 'positions'))
+              if (posSnap.empty) {
+                alert('Add at least one position before starting.')
+                return
+              }
+              const code = Array.from({ length: 4 }, () =>
+                String.fromCharCode(65 + Math.floor(Math.random() * 26))
+              ).join('')
+              await updateDoc(doc(db, 'elections', election.id), {
+                status: 'live',
+                roomCode: code,
+                lastActiveAt: serverTimestamp(),
+              })
+              navigate(`/live/${election.id}`)
+            }}
             onDuplicate={() => duplicateElection(election)}
             onRename={async (newName) => {
               await updateDoc(doc(db, 'elections', election.id), { name: newName })
@@ -151,7 +167,7 @@ export default function Dashboard() {
   )
 }
 
-function ElectionCard({ election, onEdit, onResume, onDuplicate, onRename, onDelete }) {
+function ElectionCard({ election, onEdit, onResume, onStart, onDuplicate, onRename, onDelete }) {
   const [isRenaming, setIsRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(election.name)
 
@@ -195,7 +211,10 @@ function ElectionCard({ election, onEdit, onResume, onDuplicate, onRename, onDel
 
       <div className="election-card-actions">
         {election.status === 'draft' && (
-          <button className="btn btn-secondary" onClick={onEdit}>Edit</button>
+          <>
+            <button className="btn btn-primary" onClick={onStart}>Start</button>
+            <button className="btn btn-secondary" onClick={onEdit}>Edit</button>
+          </>
         )}
         {election.status === 'live' && (
           <>

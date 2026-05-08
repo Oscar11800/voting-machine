@@ -29,22 +29,21 @@ export default function VoterSession() {
   useEffect(() => {
     async function init() {
       try {
-        // Find the election by room code
+        // Sign in anonymously first — Firestore rules require auth to read elections
+        const credential = await signInAnonymously(auth)
+        const sid = credential.user.uid
+        setSessionId(sid)
+
+        // Now authenticated, find the election by room code
         const q = query(
           collection(db, 'elections'),
           where('roomCode', '==', roomCode),
           where('status', '==', 'live')
         )
         const snapshot = await getDocs(q)
-        if (snapshot.empty) { setError('Election not found.'); return }
+        if (snapshot.empty) { setError('No active election found with that code.'); return }
 
-        const electionDoc = snapshot.docs[0]
-        const electionId = electionDoc.id
-
-        // Sign in anonymously — Firebase persists this across refreshes
-        const credential = await signInAnonymously(auth)
-        const sid = credential.user.uid
-        setSessionId(sid)
+        const electionId = snapshot.docs[0].id
 
         // Set up real-time presence in RTDB
         await setupPresence(roomCode, sid)
