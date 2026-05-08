@@ -4,7 +4,7 @@ import {
   collection, query, where, getDocs, doc,
   onSnapshot, orderBy, runTransaction, increment, serverTimestamp
 } from 'firebase/firestore'
-import { signInAnonymously } from 'firebase/auth'
+import { signInAnonymously, setPersistence, inMemoryPersistence } from 'firebase/auth'
 import { ref, set, onDisconnect } from 'firebase/database'
 import { auth, db, rtdb } from '../firebase'
 
@@ -29,7 +29,8 @@ export default function VoterSession() {
   useEffect(() => {
     async function init() {
       try {
-        // Sign in anonymously first — Firestore rules require auth to read elections
+        // Use in-memory persistence — avoids Safari iOS blocking IndexedDB
+        await setPersistence(auth, inMemoryPersistence)
         const credential = await signInAnonymously(auth)
         const sid = credential.user.uid
         setSessionId(sid)
