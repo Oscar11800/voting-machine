@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   doc, collection, onSnapshot, updateDoc,
@@ -113,6 +113,11 @@ export default function ElectionEditor() {
   if (!election) return <div className="loading-page">Loading...</div>
 
   return (
+    <div>
+    <nav className="uc-nav">
+      <img className="uc-nav-logo" src="/uchicago-logo.png" alt="University of Chicago" />
+      <span className="uc-nav-title">UChicago Vote</span>
+    </nav>
     <div className="page-wide">
       {/* Header */}
       <div className="page-header">
@@ -135,7 +140,7 @@ export default function ElectionEditor() {
           {election.status === 'draft' && (
             <button className="btn btn-primary" onClick={goLive}>Go Live</button>
           )}
-          {election.status === 'live' && (
+          {(election.status === 'live' || election.status === 'ended') && (
             <button className="btn btn-danger" onClick={resetToDraft}>Reset to Draft</button>
           )}
         </div>
@@ -153,12 +158,22 @@ export default function ElectionEditor() {
         </p>
       )}
 
-      {positions.map(position => (
+      {positions.map((position, index) => (
         <PositionItem
           key={position.id}
           electionId={id}
           position={position}
-          positions={positions}
+          index={index}
+          onReorder={async (fromIndex, toIndex) => {
+            const sorted = [...positions].sort((a, b) => a.order - b.order)
+            const moved = sorted.splice(fromIndex, 1)[0]
+            sorted.splice(toIndex, 0, moved)
+            const batch = writeBatch(db)
+            sorted.forEach((p, i) => {
+              batch.update(doc(db, 'elections', id, 'positions', p.id), { order: i })
+            })
+            await batch.commit()
+          }}
         />
       ))}
 
@@ -186,16 +201,20 @@ export default function ElectionEditor() {
         showWinnersToggle
       />
     </div>
+    </div>
   )
 }
 
 // ─── Position Row ─────────────────────────────────────────────────────────────
 
-function PositionItem({ electionId, position, positions }) {
+// Shared drag state (module-level so it persists across renders without re-renders)
+const dragState = { type: null, index: null }
+
+function PositionItem({ electionId, position, index, onReorder }) {
   const [candidates, setCandidates] = useState([])
   const [posName, setPosName] = useState(position.name)
+  const [dragOver, setDragOver] = useState(false)
 
-  // Each PositionItem loads its own candidates
   useEffect(() => {
     const q = query(
       collection(db, 'elections', electionId, 'positions', position.id, 'candidates'),
@@ -219,19 +238,6 @@ function PositionItem({ electionId, position, positions }) {
     await deleteDoc(doc(db, 'elections', electionId, 'positions', position.id))
   }
 
-  async function movePosition(direction) {
-    // Sort all positions by order, find neighbors, and swap order values
-    const sorted = [...positions].sort((a, b) => a.order - b.order)
-    const index = sorted.findIndex(p => p.id === position.id)
-    const swapIndex = direction === 'up' ? index - 1 : index + 1
-
-    if (swapIndex < 0 || swapIndex >= sorted.length) return
-
-    const swapWith = sorted[swapIndex]
-    await updateDoc(doc(db, 'elections', electionId, 'positions', position.id), { order: swapWith.order })
-    await updateDoc(doc(db, 'elections', electionId, 'positions', swapWith.id), { order: position.order })
-  }
-
   async function addCandidate() {
     await addDoc(
       collection(db, 'elections', electionId, 'positions', position.id, 'candidates'),
@@ -239,16 +245,54 @@ function PositionItem({ electionId, position, positions }) {
     )
   }
 
+  async function reorderCandidates(fromIndex, toIndex) {
+    const sorted = [...candidates].sort((a, b) => a.order - b.order)
+    const moved = sorted.splice(fromIndex, 1)[0]
+    sorted.splice(toIndex, 0, moved)
+    const batch = writeBatch(db)
+    sorted.forEach((c, i) => {
+      batch.update(
+        doc(db, 'elections', electionId, 'positions', position.id, 'candidates', c.id),
+        { order: i }
+      )
+    })
+    await batch.commit()
+  }
+
   return (
-    <div className="position-card">
+    <div
+      className={`position-card${dragOver ? ' drag-over' : ''}`}
+      draggable
+      onDragStart={e => {
+        dragState.type = 'position'
+        dragState.index = index
+        e.dataTransfer.effectAllowed = 'move'
+        const el = e.currentTarget
+        requestAnimationFrame(() => el.classList.add('dragging'))
+      }}
+      onDragEnd={e => {
+        e.currentTarget.classList.remove('dragging')
+        setDragOver(false)
+      }}
+      onDragOver={e => {
+        if (dragState.type !== 'position') return
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'move'
+        setDragOver(true)
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={e => {
+        e.preventDefault()
+        setDragOver(false)
+        if (dragState.type !== 'position' || dragState.index === index) return
+        onReorder(dragState.index, index)
+      }}
+    >
       <div className="position-card-header">
-        <div className="row" style={{ gap: 4 }}>
-          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => movePosition('up')}>↑</button>
-          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => movePosition('down')}>↓</button>
-        </div>
+        <span className="drag-handle" title="Drag to reorder">⠿</span>
         <input
           className="input-inline flex-1"
-          style={{ fontWeight: 600 }}
+          style={{ fontWeight: 600, fontSize: 18 }}
           value={posName}
           onChange={e => setPosName(e.target.value)}
           onBlur={saveName}
@@ -259,13 +303,14 @@ function PositionItem({ electionId, position, positions }) {
       </div>
 
       <div className="position-card-body">
-        {candidates.map(candidate => (
+        {candidates.map((candidate, candIndex) => (
           <CandidateItem
             key={candidate.id}
             electionId={electionId}
             positionId={position.id}
             candidate={candidate}
-            candidates={candidates}
+            index={candIndex}
+            onReorder={reorderCandidates}
           />
         ))}
         <button className="btn btn-ghost btn-sm mt-sm" onClick={addCandidate}>
@@ -329,8 +374,9 @@ function SlideConfig({ label, slide, onSave, showWinnersToggle = false }) {
 
 // ─── Candidate Row ────────────────────────────────────────────────────────────
 
-function CandidateItem({ electionId, positionId, candidate, candidates }) {
+function CandidateItem({ electionId, positionId, candidate, index, onReorder }) {
   const [candName, setCandName] = useState(candidate.name)
+  const [dragOver, setDragOver] = useState(false)
 
   async function saveName() {
     if (candName.trim() === candidate.name) return
@@ -346,32 +392,42 @@ function CandidateItem({ electionId, positionId, candidate, candidates }) {
     )
   }
 
-  async function moveCandidate(direction) {
-    const sorted = [...candidates].sort((a, b) => a.order - b.order)
-    const index = sorted.findIndex(c => c.id === candidate.id)
-    const swapIndex = direction === 'up' ? index - 1 : index + 1
-
-    if (swapIndex < 0 || swapIndex >= sorted.length) return
-
-    const swapWith = sorted[swapIndex]
-    await updateDoc(
-      doc(db, 'elections', electionId, 'positions', positionId, 'candidates', candidate.id),
-      { order: swapWith.order }
-    )
-    await updateDoc(
-      doc(db, 'elections', electionId, 'positions', positionId, 'candidates', swapWith.id),
-      { order: candidate.order }
-    )
-  }
-
   return (
-    <div className="candidate-row">
-      <div className="row" style={{ gap: 2 }}>
-        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => moveCandidate('up')}>↑</button>
-        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => moveCandidate('down')}>↓</button>
-      </div>
+    <div
+      className={`candidate-row${dragOver ? ' drag-over' : ''}`}
+      draggable
+      onDragStart={e => {
+        dragState.type = `candidate-${positionId}`
+        dragState.index = index
+        e.dataTransfer.effectAllowed = 'move'
+        const el = e.currentTarget
+        requestAnimationFrame(() => el.classList.add('dragging'))
+        e.stopPropagation()
+      }}
+      onDragEnd={e => {
+        e.currentTarget.classList.remove('dragging')
+        setDragOver(false)
+      }}
+      onDragOver={e => {
+        if (dragState.type !== `candidate-${positionId}`) return
+        e.preventDefault()
+        e.stopPropagation()
+        e.dataTransfer.dropEffect = 'move'
+        setDragOver(true)
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={e => {
+        e.preventDefault()
+        e.stopPropagation()
+        setDragOver(false)
+        if (dragState.type !== `candidate-${positionId}` || dragState.index === index) return
+        onReorder(dragState.index, index)
+      }}
+    >
+      <span className="drag-handle" title="Drag to reorder">⠿</span>
       <input
         className="input-inline flex-1"
+        style={{ fontSize: 16 }}
         value={candName}
         onChange={e => setCandName(e.target.value)}
         onBlur={saveName}

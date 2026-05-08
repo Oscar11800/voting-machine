@@ -124,6 +124,7 @@ export default function AdminLive() {
   async function endElection() {
     await updateDoc(doc(db, 'elections', id), {
       status: 'ended',
+      roomCode: null,
       currentPositionId: null,
       currentPositionStatus: null,
       lastActiveAt: serverTimestamp(),
@@ -135,6 +136,11 @@ export default function AdminLive() {
   if (!election) return <div className="loading-page">Loading...</div>
 
   return (
+    <div>
+    <nav className="uc-nav">
+      <img className="uc-nav-logo" src="/uchicago-logo.png" alt="University of Chicago" />
+      <span className="uc-nav-title">UChicago Vote</span>
+    </nav>
     <div className="page-wide">
       {/* Header */}
       <div className="page-header">
@@ -149,23 +155,25 @@ export default function AdminLive() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="stats-bar">
-        <div className="stat-item">
-          <div className="stat-label">Voters Connected</div>
-          <div className={`stat-value ${voterCount > 0 ? 'live' : ''}`}>{voterCount}</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-label">Positions</div>
-          <div className="stat-value">{positions.length}</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-label">Status</div>
-          <div className="stat-value" style={{ fontSize: 14, textTransform: 'capitalize', paddingTop: 4 }}>
-            {positionStatus ? positionStatus.replace('_', ' ') : (currentPosition ? '—' : 'Standby')}
+      {/* Stats — only shown during a live election */}
+      {election.status !== 'ended' && (
+        <div className="stats-bar">
+          <div className="stat-item">
+            <div className="stat-label">Voters Connected</div>
+            <div className={`stat-value ${voterCount > 0 ? 'live' : ''}`}>{voterCount}</div>
+          </div>
+          <div className="stat-item">
+            <div className="stat-label">Positions</div>
+            <div className="stat-value">{positions.length}</div>
+          </div>
+          <div className="stat-item">
+            <div className="stat-label">Current Position</div>
+            <div className="stat-value" style={{ fontSize: 15, paddingTop: 4 }}>
+              {currentPosition ? currentPosition.name : 'Standby'}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* No position open yet — show the full position list */}
       {!currentPosition && election.status !== 'ended' && (
@@ -278,6 +286,7 @@ export default function AdminLive() {
           </button>
         </div>
       )}
+    </div>
     </div>
   )
 }

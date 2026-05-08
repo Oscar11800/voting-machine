@@ -61,9 +61,14 @@ export default function Login() {
   }
 
   return (
-    <div className="auth-page">
+    <div style={{ minHeight: '100svh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+      <nav className="uc-nav">
+        <img className="uc-nav-logo" src="/uchicago-logo.png" alt="University of Chicago" />
+        <span className="uc-nav-title">UChicago Vote</span>
+      </nav>
+
+      <div className="auth-page" style={{ flex: 1 }}>
       <div className="auth-card">
-        <div className="auth-brand">VoteMachine</div>
         <h1 className="auth-title">{isSignUp ? 'Create Account' : 'Admin Login'}</h1>
         <p className="auth-subtitle">
           {isSignUp ? 'Set up your admin account to create elections.' : 'Sign in to manage your elections.'}
@@ -111,6 +116,7 @@ export default function Login() {
             {isSignUp ? 'Log in' : 'Sign up'}
           </button>
         </div>
+      </div>
       </div>
     </div>
   )
