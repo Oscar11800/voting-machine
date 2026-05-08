@@ -15,7 +15,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/vote" element={<VoterSession />} />
+          <Route path="/vote/:roomCode" element={<VoterSession />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/election/:id" element={<ProtectedRoute><ElectionEditor /></ProtectedRoute>} />
           <Route path="/live/:id" element={<ProtectedRoute><AdminLive /></ProtectedRoute>} />

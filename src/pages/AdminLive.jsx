@@ -70,21 +70,6 @@ export default function AdminLive() {
   const isLastPosition = currentIndex === positions.length - 1
   const positionStatus = election?.currentPositionStatus
 
-  // ── YOUR TASK ───────────────────────────────────────────────────────────────
-  // Write the toggleWinner function below.
-  //
-  // It receives a candidateId (string).
-  // It should add that id to selectedWinnerIds if it's not already in there.
-  // It should remove it if it is already in there.
-  //
-  // Use this pattern for updating arrays in state:
-  //   setSelectedWinnerIds(prev => /* return the new array */)
-  //
-  // Hints:
-  //   - prev.includes(candidateId) tells you if it's already selected
-  //   - prev.filter(id => id !== candidateId) returns array without that id
-  //   - [...prev, candidateId] returns array with that id added
-  //
   function toggleWinner(candidateId) {
     setSelectedWinnerIds(prev =>
       prev.includes(candidateId)
@@ -92,7 +77,6 @@ export default function AdminLive() {
         : [...prev, candidateId]
     )
   }
-  // ───────────────────────────────────────────────────────────────────────────
 
   // ── Admin actions ───────────────────────────────────────────────────────────
 
@@ -148,28 +132,61 @@ export default function AdminLive() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  if (!election) return <p>Loading...</p>
+  if (!election) return <div className="loading-page">Loading...</div>
 
   return (
-    <div>
+    <div className="page-wide">
       {/* Header */}
-      <div>
-        <h1>{election.name}</h1>
-        <p>Room Code: <strong>{election.roomCode}</strong></p>
-        <p>Voters connected: <strong>{voterCount}</strong></p>
+      <div className="page-header">
+        <div>
+          <button className="page-back" onClick={() => navigate('/dashboard')}>
+            ← Dashboard
+          </button>
+          <h1 style={{ marginTop: 4 }}>{election.name}</h1>
+        </div>
+        <div className="room-code-pill" style={{ fontSize: 20, padding: '6px 16px' }}>
+          {election.roomCode}
+        </div>
       </div>
 
-      {/* No position open yet — show the full position list to kick things off */}
+      {/* Stats */}
+      <div className="stats-bar">
+        <div className="stat-item">
+          <div className="stat-label">Voters Connected</div>
+          <div className={`stat-value ${voterCount > 0 ? 'live' : ''}`}>{voterCount}</div>
+        </div>
+        <div className="stat-item">
+          <div className="stat-label">Positions</div>
+          <div className="stat-value">{positions.length}</div>
+        </div>
+        <div className="stat-item">
+          <div className="stat-label">Status</div>
+          <div className="stat-value" style={{ fontSize: 14, textTransform: 'capitalize', paddingTop: 4 }}>
+            {positionStatus ? positionStatus.replace('_', ' ') : (currentPosition ? '—' : 'Standby')}
+          </div>
+        </div>
+      </div>
+
+      {/* No position open yet — show the full position list */}
       {!currentPosition && election.status !== 'ended' && (
         <div>
-          <h2>Positions</h2>
+          <div className="section-header" style={{ marginBottom: 12 }}>
+            <h2>Positions</h2>
+            <p className="text-muted text-sm">Click "Open Voting" to start a position.</p>
+          </div>
           {positions.map(p => (
-            <div key={p.id}>
-              <span>{p.name}</span>
-              {p.status === 'not_started' && (
-                <button onClick={() => openVoting(p)}>Open Voting</button>
-              )}
-              {p.status === 'results_released' && <span> ✓ Done</span>}
+            <div key={p.id} className="position-list-item">
+              <span className="position-list-item-name">{p.name}</span>
+              <div className="row">
+                {p.status === 'not_started' && (
+                  <button className="btn btn-primary btn-sm" onClick={() => openVoting(p)}>
+                    Open Voting
+                  </button>
+                )}
+                {p.status === 'results_released' && (
+                  <span className="badge badge-ended">Done</span>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -178,57 +195,71 @@ export default function AdminLive() {
       {/* Active position control panel */}
       {currentPosition && election.status !== 'ended' && (
         <div>
-          <h2>{currentPosition.name}</h2>
+          <div className="section-header">
+            <h2>{currentPosition.name}</h2>
+            <span className={`badge badge-${positionStatus === 'voting' ? 'live' : 'draft'}`}>
+              {positionStatus?.replace('_', ' ')}
+            </span>
+          </div>
 
           {/* Controls */}
-          <div>
+          <div className="live-controls">
             {positionStatus === 'voting' && (
-              <button onClick={closeVoting}>Close Voting</button>
+              <button className="btn btn-secondary" onClick={closeVoting}>Close Voting</button>
             )}
             {positionStatus === 'pending' && (
-              <>
-                <button onClick={reopenVoting}>Reopen Voting</button>
-              </>
+              <button className="btn btn-secondary" onClick={reopenVoting}>Reopen Voting</button>
             )}
-            {(positionStatus === 'pending' || positionStatus === 'results_released') && (
-              <>
-                {positionStatus !== 'results_released' && (
-                  <button onClick={releaseResults} disabled={selectedWinnerIds.length === 0}>
-                    Release Results
-                  </button>
-                )}
-                {positionStatus === 'results_released' && (
-                  isLastPosition
-                    ? <button onClick={endElection}>End Election</button>
-                    : <button onClick={advanceToNext}>Next Position →</button>
-                )}
-              </>
+            {positionStatus === 'pending' && (
+              <button
+                className="btn btn-primary"
+                onClick={releaseResults}
+                disabled={selectedWinnerIds.length === 0}
+              >
+                Release Results {selectedWinnerIds.length > 0 ? `(${selectedWinnerIds.length} selected)` : ''}
+              </button>
+            )}
+            {positionStatus === 'results_released' && (
+              isLastPosition
+                ? <button className="btn btn-danger" onClick={endElection}>End Election</button>
+                : <button className="btn btn-primary" onClick={advanceToNext}>Next Position →</button>
             )}
           </div>
 
           {/* Live tally */}
           <div>
-            <h3>Live Tally</h3>
             {candidates.map(candidate => {
               const totalVotes = candidates.reduce((sum, c) => sum + c.voteCount, 0)
               const pct = totalVotes > 0 ? Math.round((candidate.voteCount / totalVotes) * 100) : 0
               const isSelected = selectedWinnerIds.includes(candidate.id)
 
               return (
-                <div key={candidate.id}>
-                  <button
-                    onClick={() => toggleWinner(candidate.id)}
-                    disabled={positionStatus === 'voting'}
-                    style={{ fontWeight: isSelected ? 'bold' : 'normal' }}
-                  >
-                    {isSelected ? '✓ ' : ''}{candidate.name} — {candidate.voteCount} vote{candidate.voteCount !== 1 ? 's' : ''} ({pct}%)
-                  </button>
-                </div>
+                <button
+                  key={candidate.id}
+                  className={`tally-row${isSelected ? ' selected' : ''}`}
+                  onClick={() => toggleWinner(candidate.id)}
+                  disabled={positionStatus === 'voting' || positionStatus === 'results_released'}
+                >
+                  <div className="tally-row-header">
+                    <span className="tally-name">
+                      {isSelected && <span className="winner-check">✓ </span>}
+                      {candidate.name}
+                    </span>
+                    <span className="tally-count">
+                      {candidate.voteCount} vote{candidate.voteCount !== 1 ? 's' : ''} · {pct}%
+                    </span>
+                  </div>
+                  <div className="tally-bar-track">
+                    <div className="tally-bar-fill" style={{ width: `${pct}%` }} />
+                  </div>
+                </button>
               )
             })}
-            <p style={{ fontSize: '0.8em', color: '#888' }}>
-              {positionStatus === 'pending' || positionStatus === 'results_released'
-                ? 'Click a candidate to select them as winner.'
+            <p className="tally-hint">
+              {positionStatus === 'pending'
+                ? 'Tap a candidate to mark them as winner, then release results.'
+                : positionStatus === 'results_released'
+                ? 'Results released. Advance to the next position or end the election.'
                 : 'Tally updates live. Close voting to declare a winner.'}
             </p>
           </div>
@@ -237,9 +268,14 @@ export default function AdminLive() {
 
       {/* Election ended */}
       {election.status === 'ended' && (
-        <div>
-          <h2>Election Ended</h2>
-          <button onClick={() => navigate('/dashboard')}>Back to Dashboard</button>
+        <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+          <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Election Ended</p>
+          <p className="text-muted text-sm" style={{ marginBottom: 24 }}>
+            All positions have been completed.
+          </p>
+          <button className="btn btn-primary" onClick={() => navigate('/dashboard')}>
+            Back to Dashboard
+          </button>
         </div>
       )}
     </div>

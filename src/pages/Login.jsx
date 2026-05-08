@@ -61,32 +61,57 @@ export default function Login() {
   }
 
   return (
-    <div>
-      <h1>{isSignUp ? 'Create Account' : 'Admin Login'}</h1>
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-brand">VoteMachine</div>
+        <h1 className="auth-title">{isSignUp ? 'Create Account' : 'Admin Login'}</h1>
+        <p className="auth-subtitle">
+          {isSignUp ? 'Set up your admin account to create elections.' : 'Sign in to manage your elections.'}
+        </p>
 
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Username"
-          value={username}
-          onChange={e => setUsername(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-        />
-        <button type="submit">
-          {isSignUp ? 'Sign Up' : 'Log In'}
-        </button>
-      </form>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label className="form-label">Username</label>
+            <input
+              className="input"
+              type="text"
+              placeholder="yourname"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              autoComplete="username"
+              autoFocus
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <input
+              className="input"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              autoComplete={isSignUp ? 'new-password' : 'current-password'}
+            />
+          </div>
 
-      {error && <p>{error}</p>}
+          {error && <p className="form-error" style={{ marginBottom: 14 }}>{error}</p>}
 
-      <button onClick={() => setIsSignUp(!isSignUp)}>
-        {isSignUp ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
-      </button>
+          <button
+            className="btn btn-primary btn-full btn-lg"
+            type="submit"
+            style={{ marginTop: 4 }}
+          >
+            {isSignUp ? 'Create Account' : 'Sign In'}
+          </button>
+        </form>
+
+        <div className="form-toggle">
+          {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
+          <button onClick={() => setIsSignUp(!isSignUp)}>
+            {isSignUp ? 'Log in' : 'Sign up'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

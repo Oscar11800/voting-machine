@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   doc, collection, onSnapshot, updateDoc,
-  addDoc, deleteDoc, query, orderBy, serverTimestamp
+  addDoc, deleteDoc, query, orderBy, serverTimestamp, getDocs, writeBatch
 } from 'firebase/firestore'
 import { db } from '../firebase'
 
@@ -50,6 +50,46 @@ export default function ElectionEditor() {
     })
   }
 
+  async function resetToDraft() {
+    const confirmed = window.confirm(
+      'This will delete all votes and results. This cannot be undone. Continue?'
+    )
+    if (!confirmed) return
+
+    const batch = writeBatch(db)
+
+    // Reset all positions to not_started and clear winners
+    for (const position of positions) {
+      batch.update(doc(db, 'elections', id, 'positions', position.id), {
+        status: 'not_started',
+        winnerIds: [],
+      })
+
+      // Delete all vote records for this position
+      const votesSnap = await getDocs(collection(db, 'elections', id, 'votes'))
+      votesSnap.docs
+        .filter(d => d.id.startsWith(position.id))
+        .forEach(d => batch.delete(d.ref))
+
+      // Reset all candidate vote counts to 0
+      const candidatesSnap = await getDocs(
+        collection(db, 'elections', id, 'positions', position.id, 'candidates')
+      )
+      candidatesSnap.docs.forEach(d => batch.update(d.ref, { voteCount: 0 }))
+    }
+
+    // Reset the election itself
+    batch.update(doc(db, 'elections', id), {
+      status: 'draft',
+      roomCode: null,
+      currentPositionId: null,
+      currentPositionStatus: null,
+      lastActiveAt: serverTimestamp(),
+    })
+
+    await batch.commit()
+  }
+
   async function goLive() {
     if (positions.length === 0) {
       alert('Add at least one position before going live.')
@@ -70,22 +110,49 @@ export default function ElectionEditor() {
     navigate(`/live/${id}`)
   }
 
-  if (!election) return <p>Loading...</p>
+  if (!election) return <div className="loading-page">Loading...</div>
 
   return (
-    <div>
-      <button onClick={() => navigate('/dashboard')}>← Back</button>
-
-      <div>
-        <input
-          value={name}
-          onChange={e => setName(e.target.value)}
-          onBlur={saveName}         // saves when you click away from the field
-        />
-        <span> ({election.status})</span>
+    <div className="page-wide">
+      {/* Header */}
+      <div className="page-header">
+        <div>
+          <button className="page-back" onClick={() => navigate('/dashboard')}>
+            ← Back
+          </button>
+          <div className="row" style={{ gap: 10, marginTop: 4 }}>
+            <input
+              className="input-inline"
+              style={{ fontSize: 20, fontWeight: 700 }}
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onBlur={saveName}
+            />
+            <span className={`badge badge-${election.status}`}>{election.status}</span>
+          </div>
+        </div>
+        <div className="row">
+          {election.status === 'draft' && (
+            <button className="btn btn-primary" onClick={goLive}>Go Live</button>
+          )}
+          {election.status === 'live' && (
+            <button className="btn btn-danger" onClick={resetToDraft}>Reset to Draft</button>
+          )}
+        </div>
       </div>
 
-      <h2>Positions</h2>
+      {/* Positions */}
+      <div className="section-header">
+        <h2>Positions</h2>
+        <button className="btn btn-secondary btn-sm" onClick={addPosition}>+ Add Position</button>
+      </div>
+
+      {positions.length === 0 && (
+        <p className="text-muted text-sm" style={{ marginBottom: 16 }}>
+          No positions yet. Add one to get started.
+        </p>
+      )}
+
       {positions.map(position => (
         <PositionItem
           key={position.id}
@@ -94,11 +161,13 @@ export default function ElectionEditor() {
           positions={positions}
         />
       ))}
-      <button onClick={addPosition}>+ Add Position</button>
 
-      <hr />
+      <hr className="divider" />
 
-      <h2>Slide Configuration</h2>
+      {/* Slide Configuration */}
+      <div className="section-header">
+        <h2>Slides</h2>
+      </div>
 
       <SlideConfig
         label="Welcome Slide"
@@ -116,10 +185,6 @@ export default function ElectionEditor() {
         onSave={updated => updateDoc(doc(db, 'elections', id), { endSlide: updated })}
         showWinnersToggle
       />
-
-      <hr />
-
-      <button onClick={goLive}>Go Live</button>
     </div>
   )
 }
@@ -175,19 +240,25 @@ function PositionItem({ electionId, position, positions }) {
   }
 
   return (
-    <div style={{ border: '1px solid #ccc', margin: '8px 0', padding: '8px' }}>
-      <div>
-        <button onClick={() => movePosition('up')}>↑</button>
-        <button onClick={() => movePosition('down')}>↓</button>
+    <div className="position-card">
+      <div className="position-card-header">
+        <div className="row" style={{ gap: 4 }}>
+          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => movePosition('up')}>↑</button>
+          <button className="btn btn-ghost btn-sm btn-icon" onClick={() => movePosition('down')}>↓</button>
+        </div>
         <input
+          className="input-inline flex-1"
+          style={{ fontWeight: 600 }}
           value={posName}
           onChange={e => setPosName(e.target.value)}
           onBlur={saveName}
         />
-        <button onClick={deletePosition}>Delete</button>
+        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={deletePosition}>
+          Delete
+        </button>
       </div>
 
-      <div style={{ paddingLeft: '16px' }}>
+      <div className="position-card-body">
         {candidates.map(candidate => (
           <CandidateItem
             key={candidate.id}
@@ -197,7 +268,9 @@ function PositionItem({ electionId, position, positions }) {
             candidates={candidates}
           />
         ))}
-        <button onClick={addCandidate}>+ Add Candidate</button>
+        <button className="btn btn-ghost btn-sm mt-sm" onClick={addCandidate}>
+          + Add Candidate
+        </button>
       </div>
     </div>
   )
@@ -210,28 +283,37 @@ function SlideConfig({ label, slide, onSave, showWinnersToggle = false }) {
   const [backgroundColor, setBackgroundColor] = useState(slide.backgroundColor)
 
   return (
-    <div style={{ margin: '12px 0' }}>
-      <h3>{label}</h3>
-      <div>
+    <div className="slide-config">
+      <div className="slide-config-title">{label}</div>
+
+      <div className="slide-field">
         <label>Message</label>
         <input
+          className="input"
           value={message}
           onChange={e => setMessage(e.target.value)}
           onBlur={() => onSave({ ...slide, message: message.trim() })}
         />
       </div>
-      <div>
+
+      <div className="slide-field">
         <label>Background Color</label>
-        <input
-          type="color"
-          value={backgroundColor}
-          onChange={e => setBackgroundColor(e.target.value)}
-          onBlur={() => onSave({ ...slide, backgroundColor })}
-        />
+        <div className="color-row">
+          <button className="color-swatch">
+            <input
+              type="color"
+              value={backgroundColor}
+              onChange={e => setBackgroundColor(e.target.value)}
+              onBlur={() => onSave({ ...slide, backgroundColor })}
+            />
+          </button>
+          <span className="text-sm text-muted">{backgroundColor}</span>
+        </div>
       </div>
+
       {showWinnersToggle && (
-        <div>
-          <label>
+        <div className="slide-field">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
             <input
               type="checkbox"
               checked={slide.showWinners}
@@ -283,15 +365,20 @@ function CandidateItem({ electionId, positionId, candidate, candidates }) {
   }
 
   return (
-    <div>
-      <button onClick={() => moveCandidate('up')}>↑</button>
-      <button onClick={() => moveCandidate('down')}>↓</button>
+    <div className="candidate-row">
+      <div className="row" style={{ gap: 2 }}>
+        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => moveCandidate('up')}>↑</button>
+        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => moveCandidate('down')}>↓</button>
+      </div>
       <input
+        className="input-inline flex-1"
         value={candName}
         onChange={e => setCandName(e.target.value)}
         onBlur={saveName}
       />
-      <button onClick={deleteCandidate}>Delete</button>
+      <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={deleteCandidate}>
+        Delete
+      </button>
     </div>
   )
 }

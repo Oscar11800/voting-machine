@@ -1,0 +1,105 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    // Is the requesting user logged in at all? (anonymous or real account)
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Is the requesting user a real (non-anonymous) account?
+    // Firebase sets sign_in_provider to 'anonymous' for anonymous users.
+    function isAdminUser() {
+      return request.auth != null &&
+             request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    // Is the requesting user the admin of this specific election?
+    function isAdmin(electionId) {
+      return isAdminUser() &&
+             get(/databases/$(database)/documents/elections/$(electionId)).data.adminId == request.auth.uid;
+    }
+
+    // Is this election currently live?
+    function electionIsLive(electionId) {
+      return get(/databases/$(database)/documents/elections/$(electionId)).data.status == 'live';
+    }
+
+
+    // ── Users ─────────────────────────────────────────────────────────────────
+    // Each user can only read and write their own document.
+
+    match /users/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+
+    // ── Elections ─────────────────────────────────────────────────────────────
+
+    match /elections/{electionId} {
+      // Admin can read their own elections.
+      // Any authenticated user can read a live election (voters need this to join).
+      allow read: if isAuthenticated() && (
+        resource.data.adminId == request.auth.uid ||
+        resource.data.status == 'live'
+      );
+
+      // Only a real (non-anonymous) user can create an election,
+      // and they must set themselves as the admin.
+      allow create: if isAdminUser() &&
+                       request.resource.data.adminId == request.auth.uid;
+
+      // Only the admin of this election can update or delete it.
+      allow update, delete: if isAuthenticated() &&
+                               resource.data.adminId == request.auth.uid;
+
+
+      // ── Positions ───────────────────────────────────────────────────────────
+
+      match /positions/{positionId} {
+        // Admin or any voter on a live election can read positions.
+        allow read: if isAuthenticated() && (
+          isAdmin(electionId) || electionIsLive(electionId)
+        );
+        // Only admin can create/update/delete positions.
+        allow write: if isAdmin(electionId);
+
+
+        // ── Candidates ────────────────────────────────────────────────────────
+
+        match /candidates/{candidateId} {
+          allow read: if isAuthenticated() && (
+            isAdmin(electionId) || electionIsLive(electionId)
+          );
+
+          // Admin can write anything to candidates (setup, name changes).
+          // Voters can write to candidates only when the election is live —
+          // this allows the voteCount increment during vote submission.
+          allow write: if isAuthenticated() && (
+            isAdmin(electionId) || electionIsLive(electionId)
+          );
+        }
+      }
+
+
+      // ── Votes ────────────────────────────────────────────────────────────────
+      // Vote document IDs are formatted as: {positionId}_{sessionId}
+
+      match /votes/{voteId} {
+        // Only the admin can read vote records.
+        allow read: if isAdmin(electionId);
+
+        // A voter can create or update their own vote only when:
+        //   1. They are authenticated
+        //   2. The election is live
+        //   3. The sessionId field in the document matches their own auth UID
+        //      (prevents writing a vote under someone else's session)
+        allow create, update: if isAuthenticated() &&
+          electionIsLive(electionId) &&
+          request.resource.data.sessionId == request.auth.uid;
+      }
+    }
+  }
+}
