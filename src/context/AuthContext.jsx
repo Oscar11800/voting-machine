@@ -16,6 +16,7 @@ export function AuthProvider({ children }) {
     // current user (or null), then fires again any time login/logout happens.
     // This is how the app always knows who is logged in, even after a page refresh.
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      console.log('[AUTH] state changed:', firebaseUser ? `uid=${firebaseUser.uid}, email=${firebaseUser.email}, isAnonymous=${firebaseUser.isAnonymous}` : 'null (signed out)')
       setUser(firebaseUser)
       setLoading(false)
     })

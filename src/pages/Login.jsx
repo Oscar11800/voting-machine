@@ -35,6 +35,7 @@ export default function Login() {
       if (isSignUp) {
         // Create the Firebase Auth account
         const credential = await createUserWithEmailAndPassword(auth, email, password)
+        console.log('[LOGIN] signed up, uid:', credential.user.uid)
 
         // Store the real username in Firestore so we can display it later
         await setDoc(doc(db, 'users', credential.user.uid), {
@@ -42,7 +43,8 @@ export default function Login() {
           createdAt: new Date(),
         })
       } else {
-        await signInWithEmailAndPassword(auth, email, password)
+        const credential = await signInWithEmailAndPassword(auth, email, password)
+        console.log('[LOGIN] signed in, uid:', credential.user.uid)
       }
 
       navigate('/dashboard')

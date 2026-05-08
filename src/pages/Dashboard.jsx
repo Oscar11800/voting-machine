@@ -12,16 +12,19 @@ export default function Dashboard() {
 
   // Listen to all elections owned by this admin in real time
   useEffect(() => {
+    console.log('[DASHBOARD] querying elections for uid:', user.uid)
     const q = query(
       collection(db, 'elections'),
       where('adminId', '==', user.uid)
     )
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log('[DASHBOARD] got', snapshot.docs.length, 'elections')
+      snapshot.docs.forEach(d => console.log('[DASHBOARD] -', d.id, d.data().name, 'adminId:', d.data().adminId))
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
       setElections(data)
     }, (err) => {
-      console.error('Elections query failed:', err)
+      console.error('[DASHBOARD] Elections query failed:', err.code, err.message)
     })
 
     return unsubscribe

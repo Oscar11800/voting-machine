@@ -13,6 +13,11 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
+console.log('[FIREBASE] config:', {
+  projectId: firebaseConfig.projectId || 'MISSING',
+  databaseURL: firebaseConfig.databaseURL || 'MISSING',
+  authDomain: firebaseConfig.authDomain || 'MISSING',
+})
 const app = initializeApp(firebaseConfig)
 
 export const auth = getAuth(app)
