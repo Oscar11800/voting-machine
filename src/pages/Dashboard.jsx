@@ -20,6 +20,8 @@ export default function Dashboard() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
       setElections(data)
+    }, (err) => {
+      console.error('Elections query failed:', err)
     })
 
     return unsubscribe

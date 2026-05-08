@@ -39,9 +39,15 @@ service cloud.firestore {
     // ── Elections ─────────────────────────────────────────────────────────────
 
     match /elections/{electionId} {
-      // Admin can read their own elections.
-      // Any authenticated user can read a live election (voters need this to join).
-      allow read: if isAuthenticated() && (
+      // Single-document reads: admin can read their own, anyone can read live elections.
+      allow get: if isAuthenticated() && (
+        resource.data.adminId == request.auth.uid ||
+        resource.data.status == 'live'
+      );
+
+      // List queries: admin can list their own elections (query must filter by adminId).
+      // Voters can list live elections (query must filter by status == 'live').
+      allow list: if isAuthenticated() && (
         resource.data.adminId == request.auth.uid ||
         resource.data.status == 'live'
       );
