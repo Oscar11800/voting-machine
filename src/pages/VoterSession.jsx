@@ -83,19 +83,21 @@ export default function VoterSession() {
 
   // When the current position changes, load its candidates and check vote status
   useEffect(() => {
+    // Clear stale state immediately on any position change
+    setCurrentPosition(null)
+    setCandidates([])
+    setHasVoted(false)
+    setSelectedCandidateId(null)
+
     if (!election?.currentPositionId) {
       console.log('[VOTER] no current position, showing welcome/standby')
-      setCurrentPosition(null)
-      setCandidates([])
-      setHasVoted(false)
-      setSelectedCandidateId(null)
       return
     }
 
     console.log('[VOTER] position changed to:', election.currentPositionId)
 
     // Load position doc
-    onSnapshot(doc(db, 'elections', election.id, 'positions', election.currentPositionId), (snap) => {
+    const unsubPosition = onSnapshot(doc(db, 'elections', election.id, 'positions', election.currentPositionId), (snap) => {
       console.log('[VOTER] position data:', snap.data()?.name, 'status:', snap.data()?.status)
       setCurrentPosition({ id: snap.id, ...snap.data() })
     }, (err) => {
@@ -107,7 +109,7 @@ export default function VoterSession() {
       collection(db, 'elections', election.id, 'positions', election.currentPositionId, 'candidates'),
       orderBy('order')
     )
-    onSnapshot(q, (snap) => {
+    const unsubCandidates = onSnapshot(q, (snap) => {
       console.log('[VOTER] loaded', snap.docs.length, 'candidates')
       setCandidates(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     }, (err) => {
@@ -124,6 +126,13 @@ export default function VoterSession() {
       console.log('[VOTER] has not voted on this position yet')
       setHasVoted(false)
       setSelectedCandidateId(null)
+    }
+
+    // Cleanup: unsubscribe old listeners when position changes
+    return () => {
+      console.log('[VOTER] cleaning up listeners for position:', election.currentPositionId)
+      unsubPosition()
+      unsubCandidates()
     }
   }, [election?.currentPositionId, election?.id])
 
