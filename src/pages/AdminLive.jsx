@@ -88,6 +88,8 @@ export default function AdminLive() {
   const isLastPosition = currentIndex === positions.length - 1
   const positionStatus = election?.currentPositionStatus
 
+  console.log('[ADMIN] render — status:', election?.status, '| currentPositionId:', election?.currentPositionId, '| positionStatus:', positionStatus, '| currentPosition:', currentPosition?.name || 'null', '| positions loaded:', positions.length, '| candidates loaded:', candidates.length, '| voterCount:', voterCount, '| selectedWinners:', selectedWinnerIds)
+
   function toggleWinner(candidateId) {
     setSelectedWinnerIds(prev =>
       prev.includes(candidateId)

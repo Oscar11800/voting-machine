@@ -8,8 +8,12 @@ export default function Home() {
   function handleJoin(e) {
     e.preventDefault()
     const roomCode = code.trim().toUpperCase()
+    console.log('[HOME] joining with roomCode:', roomCode)
     if (roomCode.length === 4) {
+      console.log('[HOME] navigating to /vote/' + roomCode)
       navigate(`/vote/${roomCode}`)
+    } else {
+      console.log('[HOME] code too short:', roomCode.length)
     }
   }
 

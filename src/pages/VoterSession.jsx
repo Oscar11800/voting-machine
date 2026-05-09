@@ -139,33 +139,30 @@ export default function VoterSession() {
     const newCandidateRef = doc(db, 'elections', election.id, 'positions', currentPosition.id, 'candidates', selectedCandidateId)
 
     try {
-    await runTransaction(db, async (transaction) => {
-      const existingVote = await transaction.get(voteRef)
+      await runTransaction(db, async (transaction) => {
+        const existingVote = await transaction.get(voteRef)
 
-      if (existingVote.exists()) {
-        const oldCandidateId = existingVote.data().candidateId
-        // Only update counts if they changed their vote
-        if (oldCandidateId !== selectedCandidateId) {
-          const oldCandidateRef = doc(db, 'elections', election.id, 'positions', currentPosition.id, 'candidates', oldCandidateId)
-          transaction.update(oldCandidateRef, { voteCount: increment(-1) })
+        if (existingVote.exists()) {
+          const oldCandidateId = existingVote.data().candidateId
+          if (oldCandidateId !== selectedCandidateId) {
+            const oldCandidateRef = doc(db, 'elections', election.id, 'positions', currentPosition.id, 'candidates', oldCandidateId)
+            transaction.update(oldCandidateRef, { voteCount: increment(-1) })
+            transaction.update(newCandidateRef, { voteCount: increment(1) })
+          }
+        } else {
           transaction.update(newCandidateRef, { voteCount: increment(1) })
         }
-      } else {
-        transaction.update(newCandidateRef, { voteCount: increment(1) })
-      }
 
-      transaction.set(voteRef, {
-        sessionId,
-        positionId: currentPosition.id,
-        candidateId: selectedCandidateId,
-        votedAt: serverTimestamp(),
+        transaction.set(voteRef, {
+          sessionId,
+          positionId: currentPosition.id,
+          candidateId: selectedCandidateId,
+          votedAt: serverTimestamp(),
+        })
       })
-    })
-
-    })
-    console.log('[VOTER] vote submitted successfully')
-    localStorage.setItem(`voted_${currentPosition.id}`, selectedCandidateId)
-    setHasVoted(true)
+      console.log('[VOTER] vote submitted successfully')
+      localStorage.setItem(`voted_${currentPosition.id}`, selectedCandidateId)
+      setHasVoted(true)
     } catch (err) {
       console.error('[VOTER] vote failed:', err.code, err.message)
     }
@@ -185,7 +182,7 @@ export default function VoterSession() {
   }
 
   const screen = getCurrentScreen()
-  console.log('[VOTER] screen:', screen, '| election:', election?.status, '| positionStatus:', election?.currentPositionStatus, '| hasVoted:', hasVoted)
+  console.log('[VOTER] render — screen:', screen, '| election:', election?.status, '| positionStatus:', election?.currentPositionStatus, '| currentPositionId:', election?.currentPositionId, '| currentPosition:', currentPosition?.name || 'null', '| candidates:', candidates.length, '| hasVoted:', hasVoted, '| sessionId:', sessionId, '| error:', error || 'none')
   const winningCandidates = candidates.filter(c => currentPosition?.winnerIds?.includes(c.id))
 
   // ── Screens ─────────────────────────────────────────────────────────────────
