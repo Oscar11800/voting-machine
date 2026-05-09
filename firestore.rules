@@ -94,8 +94,14 @@ service cloud.firestore {
       // Vote document IDs are formatted as: {positionId}_{sessionId}
 
       match /votes/{voteId} {
-        // Only the admin can read vote records.
-        allow read: if isAdmin(electionId);
+        // Admin can read all votes. Voters can read their own vote doc
+        // (needed by the transaction that checks for an existing vote).
+        // Vote IDs are formatted as {positionId}_{sessionId}.
+        allow get: if isAuthenticated() && (
+          isAdmin(electionId) ||
+          voteId.split('_')[1] == request.auth.uid
+        );
+        allow list: if isAdmin(electionId);
 
         // A voter can create or update their own vote only when:
         //   1. They are authenticated
