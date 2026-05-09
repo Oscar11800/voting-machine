@@ -27,6 +27,12 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/elections/$(electionId)).data.status == 'live';
     }
 
+    // Is this election live or ended? (voters need access during both)
+    function electionIsLiveOrEnded(electionId) {
+      let status = get(/databases/$(database)/documents/elections/$(electionId)).data.status;
+      return status == 'live' || status == 'ended';
+    }
+
 
     // ── Users ─────────────────────────────────────────────────────────────────
     // Each user can only read and write their own document.
@@ -39,13 +45,15 @@ service cloud.firestore {
     // ── Elections ─────────────────────────────────────────────────────────────
 
     match /elections/{electionId} {
-      // Single-document reads: admin can read their own, anyone can read live elections.
+      // Single-document reads: admin can read their own.
+      // Any authenticated user can read live or ended elections (voters need both).
       allow get: if isAuthenticated() && (
         resource.data.adminId == request.auth.uid ||
-        resource.data.status == 'live'
+        resource.data.status == 'live' ||
+        resource.data.status == 'ended'
       );
 
-      // List queries: admin can list their own elections (query must filter by adminId).
+      // List queries: admin can list their own elections.
       // Voters can list live elections (query must filter by status == 'live').
       allow list: if isAuthenticated() && (
         resource.data.adminId == request.auth.uid ||
@@ -65,9 +73,9 @@ service cloud.firestore {
       // ── Positions ───────────────────────────────────────────────────────────
 
       match /positions/{positionId} {
-        // Admin or any voter on a live election can read positions.
+        // Admin or any voter on a live/ended election can read positions.
         allow read: if isAuthenticated() && (
-          isAdmin(electionId) || electionIsLive(electionId)
+          isAdmin(electionId) || electionIsLiveOrEnded(electionId)
         );
         // Only admin can create/update/delete positions.
         allow write: if isAdmin(electionId);
@@ -77,7 +85,7 @@ service cloud.firestore {
 
         match /candidates/{candidateId} {
           allow read: if isAuthenticated() && (
-            isAdmin(electionId) || electionIsLive(electionId)
+            isAdmin(electionId) || electionIsLiveOrEnded(electionId)
           );
 
           // Admin can write anything to candidates (setup, name changes).
