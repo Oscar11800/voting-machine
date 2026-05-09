@@ -21,5 +21,6 @@ console.log('[FIREBASE] config:', {
 const app = initializeApp(firebaseConfig)
 
 export const auth = getAuth(app)
+export const voterAuth = getAuth(initializeApp(firebaseConfig, 'voter'))
 export const db = getFirestore(app)
 export const rtdb = getDatabase(app)
