@@ -195,116 +195,150 @@ export default function VoterSession() {
 
   // ── Screens ─────────────────────────────────────────────────────────────────
 
+  const voterNav = (
+    <nav className="uc-nav">
+      <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+        <img className="uc-nav-logo" src="/uchicago-logo.png" alt="University of Chicago" />
+        <span className="uc-nav-title">UChicago Vote</span>
+      </a>
+    </nav>
+  )
+
   if (error) return (
-    <div className="error-page">
-      <p>{error}</p>
-      <a href="/" className="btn btn-secondary" style={{ marginTop: 16 }}>← Join a different room</a>
+    <div>
+      {voterNav}
+      <div className="error-page">
+        <p>{error}</p>
+        <a href="/" className="btn btn-secondary" style={{ marginTop: 16 }}>← Join a different room</a>
+      </div>
     </div>
   )
 
   if (screen === 'loading' || (election?.currentPositionId && !currentPosition)) return (
-    <div className="loading-page">Joining election...</div>
+    <div>
+      {voterNav}
+      <div className="loading-page">Joining election...</div>
+    </div>
   )
 
   if (screen === 'welcome') return (
-    <div
-      className="voter-slide"
-      style={{ backgroundColor: election.welcomeSlide.backgroundColor, color: '#f8fafc' }}
-    >
-      <h1>{election.welcomeSlide.message}</h1>
-      <p>Waiting for voting to begin…</p>
+    <div>
+      {voterNav}
+      <div
+        className="voter-slide"
+        style={{ backgroundColor: election.welcomeSlide.backgroundColor, color: '#f8fafc' }}
+      >
+        <h1>{election.welcomeSlide.message}</h1>
+        <p>Waiting for voting to begin…</p>
+      </div>
     </div>
   )
 
   if (screen === 'ballot') return (
-    <div className="ballot-page">
-      <div className="ballot-header">
-        <div className="ballot-position">Now voting</div>
-        <h1 className="ballot-title">{currentPosition.name}</h1>
-        <p className="ballot-subtitle">Select one candidate and submit your vote.</p>
-      </div>
+    <div>
+      {voterNav}
+      <div className="ballot-page">
+        <div className="ballot-header">
+          <div className="ballot-position">Now voting</div>
+          <h1 className="ballot-title">{currentPosition.name}</h1>
+          <p className="ballot-subtitle">Select one candidate and submit your vote.</p>
+        </div>
 
-      <div className="ballot-candidates">
-        {candidates.map(candidate => (
-          <label
-            key={candidate.id}
-            className={`candidate-option${selectedCandidateId === candidate.id ? ' selected' : ''}`}
+        <div className="ballot-candidates">
+          {candidates.map(candidate => (
+            <label
+              key={candidate.id}
+              className={`candidate-option${selectedCandidateId === candidate.id ? ' selected' : ''}`}
+            >
+              <input
+                type="radio"
+                name="candidate"
+                value={candidate.id}
+                checked={selectedCandidateId === candidate.id}
+                onChange={() => setSelectedCandidateId(candidate.id)}
+              />
+              <span className="candidate-option-name">{candidate.name}</span>
+            </label>
+          ))}
+        </div>
+
+        <div className="ballot-actions">
+          <button
+            className="btn btn-primary btn-full btn-lg"
+            onClick={submitVote}
+            disabled={!selectedCandidateId}
           >
-            <input
-              type="radio"
-              name="candidate"
-              value={candidate.id}
-              checked={selectedCandidateId === candidate.id}
-              onChange={() => setSelectedCandidateId(candidate.id)}
-            />
-            <span className="candidate-option-name">{candidate.name}</span>
-          </label>
-        ))}
-      </div>
-
-      <div className="ballot-actions">
-        <button
-          className="btn btn-primary btn-full btn-lg"
-          onClick={submitVote}
-          disabled={!selectedCandidateId}
-        >
-          Submit Vote
-        </button>
+            Submit Vote
+          </button>
+        </div>
       </div>
     </div>
   )
 
   if (screen === 'confirmation') return (
-    <div className="confirmation-page">
-      <div className="confirmation-check">✓</div>
-      <h1 className="confirmation-title">Vote Recorded</h1>
-      <p className="confirmation-detail">
-        You voted for <strong>{candidates.find(c => c.id === selectedCandidateId)?.name}</strong>
-      </p>
-      <button className="btn btn-secondary" onClick={() => setHasVoted(false)}>
-        Change Vote
-      </button>
+    <div>
+      {voterNav}
+      <div className="confirmation-page">
+        <div className="confirmation-check">✓</div>
+        <h1 className="confirmation-title">Vote Recorded</h1>
+        <p className="confirmation-detail">
+          You voted for <strong>{candidates.find(c => c.id === selectedCandidateId)?.name}</strong>
+        </p>
+        <button className="btn btn-secondary" onClick={() => setHasVoted(false)}>
+          Change Vote
+        </button>
+      </div>
     </div>
   )
 
   if (screen === 'pending') return (
-    <div
-      className="voter-slide"
-      style={{ backgroundColor: election.pendingSlide.backgroundColor, color: '#f8fafc' }}
-    >
-      <h1>{election.pendingSlide.message}</h1>
-      <p>Hang tight…</p>
+    <div>
+      {voterNav}
+      <div
+        className="voter-slide"
+        style={{ backgroundColor: election.pendingSlide.backgroundColor, color: '#f8fafc' }}
+      >
+        <h1>{election.pendingSlide.message}</h1>
+        <p>Hang tight…</p>
+      </div>
     </div>
   )
 
   if (screen === 'winner') return (
-    <div className="winner-screen">
-      <div className="winner-position-label">{currentPosition.name}</div>
-      <div className="winner-for-label">
-        Winner{winningCandidates.length > 1 ? 's' : ''}
-      </div>
-      <div className="winner-names">
-        {winningCandidates.map(c => c.name).join(' & ')}
+    <div>
+      {voterNav}
+      <div className="winner-screen">
+        <div className="winner-position-label">{currentPosition.name}</div>
+        <div className="winner-for-label">
+          Winner{winningCandidates.length > 1 ? 's' : ''}
+        </div>
+        <div className="winner-names">
+          {winningCandidates.map(c => c.name).join(' & ')}
+        </div>
       </div>
     </div>
   )
 
   if (screen === 'end') return (
-    <div
-      className="voter-slide"
-      style={{ backgroundColor: election.endSlide.backgroundColor, color: '#f8fafc' }}
-    >
-      <h1>{election.endSlide.message}</h1>
-      {election.endSlide.showWinners && <WinnersList electionId={election.id} />}
-      <a href="/" style={{ marginTop: 24, color: 'rgba(255,255,255,.7)', fontSize: 14 }}>← Join a different room</a>
+    <div>
+      {voterNav}
+      <div
+        className="voter-slide"
+        style={{ backgroundColor: election.endSlide.backgroundColor, color: '#f8fafc' }}
+      >
+        <h1>{election.endSlide.message}</h1>
+        {election.endSlide.showWinners && <WinnersList electionId={election.id} />}
+      </div>
     </div>
   )
 
   if (screen === 'closed') return (
-    <div className="voter-slide" style={{ backgroundColor: '#1a1a2e', color: '#f8fafc' }}>
-      <h1>This session has ended.</h1>
-      <p>Thank you for participating.</p>
-      <a href="/" style={{ marginTop: 24, color: 'rgba(255,255,255,.7)', fontSize: 14 }}>← Join a different room</a>
+    <div>
+      {voterNav}
+      <div className="voter-slide" style={{ backgroundColor: '#1a1a2e', color: '#f8fafc' }}>
+        <h1>This session has ended.</h1>
+        <p>Thank you for participating.</p>
+      </div>
     </div>
   )
 }

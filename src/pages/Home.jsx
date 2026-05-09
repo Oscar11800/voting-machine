@@ -18,6 +18,13 @@ export default function Home() {
   }
 
   return (
+    <div>
+    <nav className="uc-nav">
+      <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+        <img className="uc-nav-logo" src="/uchicago-logo.png" alt="University of Chicago" />
+        <span className="uc-nav-title">UChicago Vote</span>
+      </a>
+    </nav>
     <div className="home-page">
       <div className="home-brand">UChicago Vote</div>
       <p className="home-tagline">Enter your room code to join a vote.</p>
@@ -45,6 +52,7 @@ export default function Home() {
       <p className="home-admin-link">
         Admin? <a href="/login">Sign in here</a>
       </p>
+    </div>
     </div>
   )
 }
