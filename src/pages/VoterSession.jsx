@@ -4,7 +4,7 @@ import {
   collection, query, where, getDocs, doc,
   onSnapshot, orderBy, runTransaction, increment, serverTimestamp
 } from 'firebase/firestore'
-import { signInAnonymously, setPersistence, inMemoryPersistence } from 'firebase/auth'
+import { signInAnonymously } from 'firebase/auth'
 import { ref, set, onDisconnect } from 'firebase/database'
 import { voterAuth, voterDb as db, voterRtdb as rtdb } from '../firebase'
 
@@ -33,9 +33,7 @@ export default function VoterSession() {
       try {
         console.log('[VOTER] init starting, roomCode:', roomCode)
 
-        // Use in-memory persistence — avoids Safari iOS blocking IndexedDB
-        console.log('[VOTER] setting persistence to inMemory...')
-        await setPersistence(voterAuth, inMemoryPersistence)
+        // Sign in anonymously (or reuse existing anonymous session)
         console.log('[VOTER] signing in anonymously...')
         const credential = await signInAnonymously(voterAuth)
         const sid = credential.user.uid
