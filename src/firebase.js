@@ -25,6 +25,7 @@ export const auth = getAuth(app)
 const voterApp = initializeApp(firebaseConfig, 'voter')
 export const voterAuth = getAuth(voterApp)
 export const voterDb = getFirestore(voterApp)
+export const voterRtdb = getDatabase(voterApp)
 
 export const db = getFirestore(app)
 export const rtdb = getDatabase(app)
