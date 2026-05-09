@@ -195,6 +195,12 @@ export default function ElectionEditor() {
         onSave={updated => updateDoc(doc(db, 'elections', id), { pendingSlide: updated })}
       />
       <SlideConfig
+        label="Winner Slide"
+        slide={election.winnerSlide || { backgroundColor: '#0f172a' }}
+        onSave={updated => updateDoc(doc(db, 'elections', id), { winnerSlide: updated })}
+        colorOnly
+      />
+      <SlideConfig
         label="End Slide"
         slide={election.endSlide}
         onSave={updated => updateDoc(doc(db, 'elections', id), { endSlide: updated })}
@@ -323,23 +329,25 @@ function PositionItem({ electionId, position, index, onReorder }) {
 
 // ─── Slide Config ─────────────────────────────────────────────────────────────
 
-function SlideConfig({ label, slide, onSave, showWinnersToggle = false }) {
-  const [message, setMessage] = useState(slide.message)
+function SlideConfig({ label, slide, onSave, showWinnersToggle = false, colorOnly = false }) {
+  const [message, setMessage] = useState(slide.message || '')
   const [backgroundColor, setBackgroundColor] = useState(slide.backgroundColor)
 
   return (
     <div className="slide-config">
       <div className="slide-config-title">{label}</div>
 
-      <div className="slide-field">
-        <label>Message</label>
-        <input
-          className="input"
-          value={message}
-          onChange={e => setMessage(e.target.value)}
-          onBlur={() => onSave({ ...slide, message: message.trim() })}
-        />
-      </div>
+      {!colorOnly && (
+        <div className="slide-field">
+          <label>Message</label>
+          <input
+            className="input"
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            onBlur={() => onSave({ ...slide, message: message.trim() })}
+          />
+        </div>
+      )}
 
       <div className="slide-field">
         <label>Background Color</label>

@@ -564,20 +564,15 @@ a:hover { text-decoration: underline; }
   color: #f1f5f9;
 }
 .winner-position-label {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .1em;
-  color: rgba(241,245,249,.5);
-  margin-bottom: 16px;
-}
-.winner-for-label {
-  font-size: 18px;
-  color: rgba(241,245,249,.6);
-  margin-bottom: 10px;
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+  color: rgba(241,245,249,.7);
+  margin-bottom: 20px;
 }
 .winner-names {
-  font-size: 44px;
+  font-size: 52px;
   font-weight: 900;
   letter-spacing: -1.5px;
   line-height: 1.05;

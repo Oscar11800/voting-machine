@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
-  collection, query, where, getDocs, doc,
+  collection, query, where, getDocs, getDoc, doc,
   onSnapshot, orderBy, runTransaction, increment, serverTimestamp
 } from 'firebase/firestore'
 import { signInAnonymously } from 'firebase/auth'
@@ -94,21 +94,35 @@ export default function VoterSession() {
 
     console.log('[VOTER] position changed to:', election.currentPositionId)
 
-    // Load position doc
-    const unsubPosition = onSnapshot(doc(db, 'elections', election.id, 'positions', election.currentPositionId), (snap) => {
-      console.log('[VOTER] position data:', snap.data()?.name, 'status:', snap.data()?.status)
+    const posRef = doc(db, 'elections', election.id, 'positions', election.currentPositionId)
+    const candQuery = query(
+      collection(db, 'elections', election.id, 'positions', election.currentPositionId, 'candidates'),
+      orderBy('order')
+    )
+
+    // Immediate fetch so data appears instantly (don't wait for listener)
+    getDoc(posRef).then(snap => {
+      if (snap.exists()) {
+        console.log('[VOTER] position fetched:', snap.data()?.name)
+        setCurrentPosition({ id: snap.id, ...snap.data() })
+      }
+    }).catch(err => console.error('[VOTER] position fetch error:', err.code))
+
+    getDocs(candQuery).then(snap => {
+      console.log('[VOTER] candidates fetched:', snap.docs.length)
+      setCandidates(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    }).catch(err => console.error('[VOTER] candidates fetch error:', err.code))
+
+    // Then set up listeners for live updates (voting status changes, etc.)
+    const unsubPosition = onSnapshot(posRef, (snap) => {
+      console.log('[VOTER] position update:', snap.data()?.name, 'status:', snap.data()?.status)
       setCurrentPosition({ id: snap.id, ...snap.data() })
     }, (err) => {
       console.error('[VOTER] position listener error:', err.code, err.message)
     })
 
-    // Load candidates sorted by order (ballot display order, not vote count)
-    const q = query(
-      collection(db, 'elections', election.id, 'positions', election.currentPositionId, 'candidates'),
-      orderBy('order')
-    )
-    const unsubCandidates = onSnapshot(q, (snap) => {
-      console.log('[VOTER] loaded', snap.docs.length, 'candidates')
+    const unsubCandidates = onSnapshot(candQuery, (snap) => {
+      console.log('[VOTER] candidates update:', snap.docs.length)
       setCandidates(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     }, (err) => {
       console.error('[VOTER] candidates listener error:', err.code, err.message)
@@ -307,11 +321,8 @@ export default function VoterSession() {
   if (screen === 'winner') return (
     <div>
       {voterNav}
-      <div className="winner-screen">
+      <div className="winner-screen" style={{ backgroundColor: election.winnerSlide?.backgroundColor || '#0f172a' }}>
         <div className="winner-position-label">{currentPosition.name}</div>
-        <div className="winner-for-label">
-          Winner{winningCandidates.length > 1 ? 's' : ''}
-        </div>
         <div className="winner-names">
           {winningCandidates.map(c => c.name).join(' & ')}
         </div>

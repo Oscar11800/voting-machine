@@ -39,6 +39,8 @@ export default function Home() {
           autoFocus
           autoCapitalize="characters"
           autoComplete="off"
+          autoCorrect="off"
+          spellCheck="false"
         />
         <button
           className="home-btn"
