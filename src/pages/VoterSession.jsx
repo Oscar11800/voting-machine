@@ -6,7 +6,7 @@ import {
 } from 'firebase/firestore'
 import { signInAnonymously, setPersistence, inMemoryPersistence } from 'firebase/auth'
 import { ref, set, onDisconnect } from 'firebase/database'
-import { voterAuth, db, rtdb } from '../firebase'
+import { voterAuth, voterDb as db, rtdb } from '../firebase'
 
 export default function VoterSession() {
   const { roomCode } = useParams()
