@@ -140,7 +140,7 @@ export default function ElectionEditor() {
           {election.status === 'draft' && (
             <button className="btn btn-primary" onClick={goLive}>Go Live</button>
           )}
-          {(election.status === 'live' || election.status === 'ended') && (
+          {(election.status === 'live' || election.status === 'ended' || election.status === 'closed') && (
             <button className="btn btn-danger" onClick={resetToDraft}>Reset to Draft</button>
           )}
         </div>

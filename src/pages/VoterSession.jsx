@@ -47,7 +47,7 @@ export default function VoterSession() {
         const q = query(
           collection(db, 'elections'),
           where('roomCode', '==', roomCode),
-          where('status', '==', 'live')
+          where('status', 'in', ['live', 'ended'])
         )
         const snapshot = await getDocs(q)
         console.log('[VOTER] query returned', snapshot.docs.length, 'results')
@@ -181,6 +181,7 @@ export default function VoterSession() {
 
   function getCurrentScreen() {
     if (!election) return 'loading'
+    if (election.status === 'closed') return 'closed'
     if (election.status === 'ended') return 'end'
     if (!election.currentPositionId) return 'welcome'
     const status = election.currentPositionStatus
@@ -296,6 +297,13 @@ export default function VoterSession() {
     >
       <h1>{election.endSlide.message}</h1>
       {election.endSlide.showWinners && <WinnersList electionId={election.id} />}
+    </div>
+  )
+
+  if (screen === 'closed') return (
+    <div className="voter-slide" style={{ backgroundColor: '#1a1a2e', color: '#f8fafc' }}>
+      <h1>This session has ended.</h1>
+      <p>Thank you for participating.</p>
     </div>
   )
 }

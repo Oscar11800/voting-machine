@@ -154,12 +154,22 @@ export default function AdminLive() {
     console.log('[ADMIN] ending election')
     await updateDoc(doc(db, 'elections', id), {
       status: 'ended',
-      roomCode: null,
       currentPositionId: null,
       currentPositionStatus: null,
       lastActiveAt: serverTimestamp(),
     })
     console.log('[ADMIN] election ended')
+  }
+
+  async function closeElection() {
+    console.log('[ADMIN] closing election')
+    await updateDoc(doc(db, 'elections', id), {
+      status: 'closed',
+      roomCode: null,
+      lastActiveAt: serverTimestamp(),
+    })
+    console.log('[ADMIN] election closed')
+    navigate('/dashboard')
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -305,13 +315,19 @@ export default function AdminLive() {
         </div>
       )}
 
-      {/* Election ended — show full results */}
+      {/* Election ended — show full results, voters can still view */}
       {election.status === 'ended' && (
         <div>
           <div className="section-header" style={{ marginBottom: 20 }}>
             <h2 style={{ fontSize: 22 }}>Final Results</h2>
-            <span className="badge badge-ended">Election Ended</span>
+            <div className="row" style={{ gap: 8 }}>
+              <span className="badge badge-ended">Results Showing</span>
+              <button className="btn btn-danger btn-sm" onClick={closeElection}>Close Election</button>
+            </div>
           </div>
+          <p className="text-muted text-sm" style={{ marginBottom: 16 }}>
+            Voters can still view results via room code <strong>{election.roomCode}</strong>. Close the election to end access.
+          </p>
           {positions.map(p => (
             <PositionResult key={p.id} electionId={id} position={p} />
           ))}

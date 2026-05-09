@@ -233,6 +233,12 @@ function ElectionCard({ election, onEdit, onResume, onStart, onDuplicate, onRena
             <button className="btn btn-secondary" onClick={onEdit}>Edit</button>
           </>
         )}
+        {election.status === 'closed' && (
+          <>
+            <button className="btn btn-secondary" onClick={onResume}>Results</button>
+            <button className="btn btn-secondary" onClick={onEdit}>Edit</button>
+          </>
+        )}
         <button className="btn btn-secondary" onClick={onDuplicate}>Duplicate</button>
         <button className="btn btn-secondary" onClick={startRename}>Rename</button>
         <button className="btn btn-ghost" onClick={onDelete} style={{ color: 'var(--danger)' }}>

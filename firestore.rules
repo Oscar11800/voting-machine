@@ -54,10 +54,11 @@ service cloud.firestore {
       );
 
       // List queries: admin can list their own elections.
-      // Voters can list live elections (query must filter by status == 'live').
+      // Voters can list live or ended elections.
       allow list: if isAuthenticated() && (
         resource.data.adminId == request.auth.uid ||
-        resource.data.status == 'live'
+        resource.data.status == 'live' ||
+        resource.data.status == 'ended'
       );
 
       // Only a real (non-anonymous) user can create an election,
