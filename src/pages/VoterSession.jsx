@@ -200,6 +200,7 @@ export default function VoterSession() {
   if (error) return (
     <div className="error-page">
       <p>{error}</p>
+      <a href="/" className="btn btn-secondary" style={{ marginTop: 16 }}>← Join a different room</a>
     </div>
   )
 
@@ -297,6 +298,7 @@ export default function VoterSession() {
     >
       <h1>{election.endSlide.message}</h1>
       {election.endSlide.showWinners && <WinnersList electionId={election.id} />}
+      <a href="/" style={{ marginTop: 24, color: 'rgba(255,255,255,.7)', fontSize: 14 }}>← Join a different room</a>
     </div>
   )
 
@@ -304,6 +306,7 @@ export default function VoterSession() {
     <div className="voter-slide" style={{ backgroundColor: '#1a1a2e', color: '#f8fafc' }}>
       <h1>This session has ended.</h1>
       <p>Thank you for participating.</p>
+      <a href="/" style={{ marginTop: 24, color: 'rgba(255,255,255,.7)', fontSize: 14 }}>← Join a different room</a>
     </div>
   )
 }
