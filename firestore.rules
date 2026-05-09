@@ -45,12 +45,14 @@ service cloud.firestore {
     // ── Elections ─────────────────────────────────────────────────────────────
 
     match /elections/{electionId} {
-      // Single-document reads: admin can read their own.
-      // Any authenticated user can read live or ended elections (voters need both).
+      // Single-document reads: admin can read their own (any status).
+      // Any authenticated user can read live, ended, or closed elections
+      // (voters need to see the status change to show the correct screen).
       allow get: if isAuthenticated() && (
         resource.data.adminId == request.auth.uid ||
         resource.data.status == 'live' ||
-        resource.data.status == 'ended'
+        resource.data.status == 'ended' ||
+        resource.data.status == 'closed'
       );
 
       // List queries: admin can list their own elections.
@@ -120,6 +122,9 @@ service cloud.firestore {
         allow create, update: if isAuthenticated() &&
           electionIsLive(electionId) &&
           request.resource.data.sessionId == request.auth.uid;
+
+        // Admin can delete votes (used during reset to draft)
+        allow delete: if isAdmin(electionId);
       }
     }
   }

@@ -322,10 +322,16 @@ function WinnersList({ electionId }) {
       // Load candidates for each position to resolve winner names
       const candidateMap = {}
       for (const p of pos) {
-        const cSnap = await getDocs(collection(db, 'elections', electionId, 'positions', p.id, 'candidates'))
-        cSnap.docs.forEach(d => { candidateMap[d.id] = d.data().name })
+        try {
+          const cSnap = await getDocs(collection(db, 'elections', electionId, 'positions', p.id, 'candidates'))
+          cSnap.docs.forEach(d => { candidateMap[d.id] = d.data().name })
+        } catch (err) {
+          console.log('[VOTER] WinnersList candidate fetch failed (election may be closed)')
+        }
       }
       setAllCandidates(candidateMap)
+    }, (err) => {
+      console.log('[VOTER] WinnersList listener failed (election may be closed)')
     })
   }, [electionId])
 
