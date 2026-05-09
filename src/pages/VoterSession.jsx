@@ -193,7 +193,7 @@ export default function VoterSession() {
     </div>
   )
 
-  if (screen === 'loading') return (
+  if (screen === 'loading' || (election?.currentPositionId && !currentPosition)) return (
     <div className="loading-page">Joining election...</div>
   )
 

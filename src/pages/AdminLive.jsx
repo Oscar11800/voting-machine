@@ -164,7 +164,7 @@ export default function AdminLive() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  if (!election) return <div className="loading-page">Loading...</div>
+  if (!election || (election.currentPositionId && !currentPosition)) return <div className="loading-page">Loading...</div>
 
   return (
     <div>
